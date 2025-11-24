@@ -1,132 +1,190 @@
+
 import streamlit as st
-import pandas as pd
 from fpdf import FPDF
+import os
 
-# Configuración básica de la página
-st.set_page_config(page_title="Diagnóstico MKT", page_icon="📊")
+# --- 1. CONFIGURACIÓN DE PÁGINA ---
+st.set_page_config(page_title="Scanner de Marca", page_icon="🚀", layout="centered")
 
-# --- FUNCIÓN PARA GENERAR PDF ---
+# --- 2. ESTILOS PERSONALIZADOS (CSS) ---
+# Aquí aplicamos el Azul Marino (#0A2A43) y ajustes finos
+st.markdown("""
+    <style>
+    /* Títulos H1, H2, H3 en Azul Marino Profundo */
+    h1, h2, h3 {
+        color: #0A2A43 !important;
+    }
+    
+    /* Métricas grandes en Azul Marino */
+    [data-testid="stMetricValue"] {
+        color: #0A2A43 !important;
+    }
+    
+    /* Botones personalizados (Turquesa con texto blanco) */
+    div.stButton > button {
+        background-color: #4BB7A1;
+        color: white;
+        border: none;
+        border-radius: 5px;
+    }
+    div.stButton > button:hover {
+        background-color: #3AA690;
+        color: white;
+    }
+    
+    /* Ajuste de color texto en la barra lateral (Arena) para que se lea bien */
+    [data-testid="stSidebar"] {
+        color: #333333;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- 3. CARGA DEL LOGO EN LA BARRA LATERAL ---
+# Intenta buscar 'logo.png', si no está, busca 'logo.jpg'
+if os.path.exists("logo.png"):
+    st.sidebar.image("logo.png", use_container_width=True)
+elif os.path.exists("logo.jpg"):
+    st.sidebar.image("logo.jpg", use_container_width=True)
+else:
+    st.sidebar.header("Tu Empresa") # Texto de respaldo si no hay imagen
+
+st.sidebar.markdown("---")
+st.sidebar.write("Esta herramienta realiza un diagnóstico 360° de tu presencia digital.")
+
+# --- 4. FUNCIÓN GENERADORA DE PDF ---
 def generar_pdf(empresa, puntaje, recomendaciones):
-    # Clase PDF personalizada para manejar mejor los caracteres
     pdf = FPDF()
     pdf.add_page()
     
-    # Título
+    # Encabezado con color Azul Marino (RGB: 10, 42, 67)
+    pdf.set_text_color(10, 42, 67) 
     pdf.set_font("Arial", 'B', 16)
-    # Usamos encode('latin-1', 'replace') para manejar tildes básicas
-    titulo = f"Informe de Diagnostico: {empresa}"
-    pdf.cell(200, 10, txt=titulo.encode('latin-1', 'replace').decode('latin-1'), ln=1, align='C')
-    pdf.ln(10)
+    # encode/decode para manejar tildes básicas
+    pdf.cell(0, 10, txt=f"Informe: {empresa}".encode('latin-1', 'replace').decode('latin-1'), ln=1, align='C')
+    pdf.ln(5)
+    
+    # Reset color a negro para el texto normal
+    pdf.set_text_color(0, 0, 0)
     
     # Puntaje
     pdf.set_font("Arial", 'B', 12)
-    texto_puntaje = f"Puntaje de Salud Digital: {puntaje}/100"
-    pdf.cell(200, 10, txt=texto_puntaje, ln=1, align='L')
-    
-    # Estado
-    estado = "EXCELENTE" if puntaje > 75 else "MEJORABLE" if puntaje > 40 else "CRITICO"
-    pdf.cell(200, 10, txt=f"Estado General: {estado}", ln=1, align='L')
-    pdf.ln(10)
+    estado = "EXCELENTE" if puntaje > 80 else "BUENO" if puntaje > 50 else "CRITICO"
+    pdf.cell(0, 10, txt=f"Puntaje Final: {puntaje}/100 - Estado: {estado}", ln=1, align='L')
+    pdf.ln(5)
     
     # Recomendaciones
     pdf.set_font("Arial", 'B', 14)
-    pdf.cell(200, 10, txt="Recomendaciones Clave:", ln=1, align='L')
+    # Título en Turquesa (RGB: 75, 183, 161)
+    pdf.set_text_color(75, 183, 161)
+    pdf.cell(0, 10, txt="Plan de Accion Recomendado:", ln=1, align='L')
     
-    pdf.set_font("Arial", size=12)
+    pdf.set_text_color(51, 51, 51) # Gris oscuro
+    pdf.set_font("Arial", size=11)
     for rec in recomendaciones:
-        # Limpieza básica de texto para el PDF
-        texto_rec = f"- {rec}"
-        # Multi_cell ajusta el texto largo
-        try:
-            pdf.multi_cell(0, 10, txt=texto_rec.encode('latin-1', 'replace').decode('latin-1'))
-        except:
-            pdf.multi_cell(0, 10, txt="- Recomendacion general (caracter no soportado)")
+        texto = f"- {rec}"
+        pdf.multi_cell(0, 8, txt=texto.encode('latin-1', 'replace').decode('latin-1'))
+        pdf.ln(2)
             
-    # Retornar el binario del PDF
     return pdf.output(dest='S').encode('latin-1')
 
-# --- INTERFAZ DE USUARIO (WEB) ---
-st.title("📊 Diagnóstico de Presencia Digital")
-st.markdown("Responde las siguientes preguntas para obtener tu informe y recomendaciones.")
+# --- 5. INTERFAZ DEL FORMULARIO ---
+st.title("🚀 Scanner de Marca 360°")
+st.markdown("Diagnóstico profesional de presencia digital e identidad de marca.")
 
-with st.form("marketing_form"):
-    st.write("### Datos del Negocio")
-    nombre_empresa = st.text_input("Nombre de tu empresa")
+with st.form("audit_form"):
+    st.subheader("1. Identidad y Activos")
     
-    st.write("### Estrategia Actual")
-    frecuencia = st.selectbox("¿Con qué frecuencia publicas contenido?", 
-                              ("Diariamente", "2-3 veces por semana", "1 vez por semana", "Casi nunca"))
-    
-    canales = st.multiselect("¿En qué redes tienes presencia activa?", 
-                             ["Instagram", "LinkedIn", "TikTok", "Facebook", "YouTube", "Email Marketing"])
-    
-    inversion = st.radio("¿Haces publicidad pagada (Ads)?", 
-                         ("Sí, mensualmente", "A veces", "Nunca"))
-    
-    submitted = st.form_submit_button("Generar Diagnóstico")
-
-# --- LÓGICA DE PUNTUACIÓN ---
-if submitted:
-    if not nombre_empresa:
-        st.error("⚠️ Por favor, ingresa el nombre de tu empresa para continuar.")
-    else:
-        # 1. Cálculo de puntaje
-        score = 0
-        if frecuencia == "Diariamente": score += 30
-        elif frecuencia == "2-3 veces por semana": score += 20
-        elif frecuencia == "1 vez por semana": score += 10
-        
-        score += len(canales) * 5  # 5 puntos por red social
-        
-        if inversion == "Sí, mensualmente": score += 40
-        elif inversion == "A veces": score += 20
-        
-        score_final = min(score, 100) # Tope máximo de 100
-
-        # 2. Generar recomendaciones textuales
-        lista_recomendaciones = []
-        if "Email Marketing" not in canales:
-            lista_recomendaciones.append("Implementar Email Marketing para fidelizar clientes.")
-        if frecuencia == "Casi nunca":
-            lista_recomendaciones.append("Crear un calendario editorial para publicar al menos semanalmente.")
-        if inversion == "Nunca":
-            lista_recomendaciones.append("Considerar un presupuesto mensual minimo para Ads (Publicidad).")
-        if len(canales) < 2:
-            lista_recomendaciones.append("Diversificar canales: Depender de una sola red es riesgoso.")
-        if score_final < 50:
-            lista_recomendaciones.append("Se recomienda una auditoria profesional urgente.")
-        
-        if not lista_recomendaciones:
-            lista_recomendaciones.append("Mantener la estrategia actual y monitorear metricas.")
-
-        # 3. Mostrar resultados en pantalla
-        st.divider()
-        st.subheader(f"Resultados para {nombre_empresa}")
-        
-        col1, col2 = st.columns(2)
-        col1.metric("Tu Puntaje Digital", f"{score_final}/100")
-        
-        if score_final > 75:
-            col2.success("Estado: EXCELENTE 🚀")
-        elif score_final > 40:
-            col2.warning("Estado: MEJORABLE ⚠️")
-        else:
-            col2.error("Estado: CRÍTICO 🚨")
-
-        st.write("#### Tus Recomendaciones:")
-        for rec in lista_recomendaciones:
-            st.info(rec)
-
-        # 4. Botón de descarga
-        st.write("---")
-        st.write("#### 📥 Guarda tu reporte")
-        
-        # Generar PDF
-        pdf_bytes = generar_pdf(nombre_empresa, score_final, lista_recomendaciones)
-        
-        st.download_button(
-            label="Descargar Informe PDF",
-            data=pdf_bytes,
-            file_name=f"Diagnostico_{nombre_empresa}.pdf",
-            mime="application/pdf"
+    col1, col2 = st.columns(2)
+    with col1:
+        identidad = st.radio(
+            "¿Tienes una identidad visual definida?",
+            ("Sí, manual de marca completo", "Solo tengo un logotipo", "No, uso colores al azar")
         )
+    with col2:
+        web = st.selectbox("¿Estado de tu sitio web?", 
+                           ("No tengo", "Básico / Informativo", "Tienda Online / E-commerce Optimizado"))
+
+    st.divider()
+    st.subheader("2. Estrategia de Contenidos")
+
+    frecuencia = st.select_slider(
+        "Frecuencia de publicación",
+        options=["Casi nunca", "1 vez/semana", "2-3 veces/semana", "Diario"]
+    )
+    
+    calidad = st.slider("Autoevaluación: Calidad de foto/video (1-10)", 1, 10, 5)
+
+    canales = st.multiselect(
+        "Canales activos",
+        ["Instagram", "LinkedIn", "TikTok", "Facebook", "YouTube", "Email Marketing"]
+    )
+
+    st.divider()
+    st.subheader("3. Inversión y Gestión")
+    
+    col3, col4 = st.columns(2)
+    with col3:
+        inversion = st.radio("Publicidad Pagada (Ads)", ("Nunca", "Esporádica", "Mensual Constante"))
+    with col4:
+        crm = st.checkbox("¿Usas CRM o Base de Datos organizada?")
+
+    st.markdown("---")
+    submitted = st.form_submit_button("📊 Generar Informe Profesional")
+
+# --- 6. LÓGICA DE NEGOCIO Y RESULTADOS ---
+if submitted:
+    score = 0
+    recomendaciones = []
+
+    # Cálculos
+    if identidad == "Sí, manual de marca completo": score += 15
+    elif identidad == "Solo tengo un logotipo": 
+        score += 5
+        recomendaciones.append("Identidad: Necesitas definir tipografias y colores, no solo el logo.")
+    else: recomendaciones.append("URGENTE: Tu marca no es reconocible. Crea un manual de identidad.")
+
+    if web == "Tienda Online / E-commerce Optimizado": score += 10
+    elif web == "Básico / Informativo": score += 5
+    else: recomendaciones.append("Web: Un sitio web aumenta tu credibilidad y ventas automaticas.")
+
+    if frecuencia == "Diario": score += 20
+    elif frecuencia == "2-3 veces/semana": score += 15
+    elif frecuencia == "1 vez/semana": score += 5; recomendaciones.append("Frecuencia: Sube a 3 posts semanales.")
+    else: recomendaciones.append("Constancia: Publicar 'casi nunca' mata tu alcance.")
+
+    score += calidad
+    if calidad < 6: recomendaciones.append("Contenido: Mejora la iluminacion y audio. La calidad vende.")
+
+    puntos_canales = len(canales) * 4
+    score += min(puntos_canales, 20)
+    if len(canales) < 2: recomendaciones.append("Diversificacion: No dependas de una sola red social.")
+
+    if inversion == "Mensual Constante": score += 20
+    elif inversion == "Esporádica": score += 10
+    else: recomendaciones.append("Ads: Invierte aunque sea un monto pequeño en publicidad.")
+
+    if crm: score += 5
+    else: recomendaciones.append("Gestion: Implementa un CRM para no perder clientes.")
+
+    score_final = min(score, 100)
+    
+    # Mostrar Resultados
+    st.divider()
+    col_res1, col_res2 = st.columns([1, 2])
+    
+    with col_res1:
+        st.metric("Puntaje de Marca", f"{score_final}/100")
+        
+    with col_res2:
+        if score_final >= 80: st.success("Estado: LÍDER DE MERCADO 🏆")
+        elif score_final >= 50: st.warning("Estado: EN CRECIMIENTO 🚧")
+        else: st.error("Estado: INVISIBLE 👻")
+        st.progress(score_final)
+
+    st.write("### 💡 Hoja de Ruta Sugerida")
+    for rec in recomendaciones:
+        st.info(rec)
+    
+    # Botón PDF
+    pdf_bytes = generar_pdf("Cliente", score_final, recomendaciones)
+    st.download_button("📥 Descargar Auditoría PDF", data=pdf_bytes, file_name="Auditoria_Marca.pdf", mime="application/pdf")
